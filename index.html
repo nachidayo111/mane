@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>音声入力で予定登録</title>
+  <title>音声予定登録</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ff9500">
@@ -21,10 +21,10 @@
     <header>🎤 音声予定登録</header>
 
     <main>
-      <p class="hint">例：「明日の15時に歯医者」</p>
+      <p class="hint">ボタンを長押しして話してください</p>
       <p id="deviceMsg" class="hint"></p>
 
-      <button id="startBtn">音声入力開始</button>
+      <button id="startBtn">長押しで音声入力</button>
 
       <ul id="scheduleList"></ul>
     </main>
@@ -36,23 +36,42 @@ const list = document.getElementById("scheduleList");
 const deviceMsg = document.getElementById("deviceMsg");
 
 const isAndroid = /Android/i.test(navigator.userAgent);
-
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-if (!isAndroid) {
+let recognition;
+let pressTimer = null;
+
+if (!isAndroid || !SpeechRecognition) {
   startBtn.disabled = true;
   deviceMsg.textContent = "⚠️ 音声入力はAndroid端末のみ対応しています";
-}
-
-if (isAndroid && SpeechRecognition) {
-  const recognition = new SpeechRecognition();
+} else {
+  recognition = new SpeechRecognition();
   recognition.lang = "ja-JP";
 
-  startBtn.onclick = () => {
+  const startRecording = () => {
     recognition.start();
     startBtn.classList.add("listening");
   };
+
+  const stopRecording = () => {
+    clearTimeout(pressTimer);
+    recognition.stop();
+    startBtn.classList.remove("listening");
+  };
+
+  // 長押し開始
+  startBtn.addEventListener("touchstart", () => {
+    pressTimer = setTimeout(startRecording, 300);
+  });
+  startBtn.addEventListener("mousedown", () => {
+    pressTimer = setTimeout(startRecording, 300);
+  });
+
+  // 離したら終了
+  startBtn.addEventListener("touchend", stopRecording);
+  startBtn.addEventListener("mouseup", stopRecording);
+  startBtn.addEventListener("mouseleave", stopRecording);
 
   recognition.onresult = (event) => {
     const text = event.results[0][0].transcript;
@@ -60,14 +79,6 @@ if (isAndroid && SpeechRecognition) {
     li.textContent = text;
     list.appendChild(li);
     save();
-  };
-
-  recognition.onend = () => {
-    startBtn.classList.remove("listening");
-  };
-
-  recognition.onerror = () => {
-    startBtn.classList.remove("listening");
   };
 }
 
