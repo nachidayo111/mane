@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #f2f2f7;
 }
 
@@ -8,15 +8,15 @@ body {
   max-width: 420px;
   margin: 0 auto;
   min-height: 100vh;
-  background: #fff;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
 }
 
 header {
-  background: linear-gradient(135deg, #ff9500, #ff7a00);
+  background: #ff9500;
   color: #fff;
-  padding: 18px;
+  padding: 16px;
   text-align: center;
   font-size: 20px;
   font-weight: bold;
@@ -30,27 +30,31 @@ main {
 .hint {
   font-size: 14px;
   color: #666;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 button {
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   font-size: 16px;
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ff9500;
   color: #fff;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
-  transition: 0.2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* 🎤 音声取得中 */
 button.listening {
   background: #007aff;
-  box-shadow: 0 0 16px rgba(0, 122, 255, 0.9);
+  box-shadow: 0 0 15px rgba(0,122,255,0.8);
+}
+
+button:disabled {
+  background: #ccc;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 ul {
@@ -61,9 +65,9 @@ ul {
 
 li {
   background: #f9f9f9;
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 12px;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
   font-size: 15px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }

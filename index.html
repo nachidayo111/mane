@@ -1,29 +1,28 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff9500">
-
-<!-- iOS用 -->
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="予定登録">
-
   <meta charset="UTF-8" />
+  <title>音声入力で予定登録</title>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>音声予定アラーム</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="theme-color" content="#ff9500">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="予定登録">
+
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <div class="app">
-    <header>🎤 音声予定アラーム</header>
+    <header>🎤 音声予定登録</header>
 
     <main>
-      <div class="hint">
-        例：「明日の15時に歯医者」「18時バイト」
-      </div>
+      <p class="hint">例：「明日の15時に歯医者」</p>
+      <p id="deviceMsg" class="hint"></p>
 
       <button id="startBtn">音声入力開始</button>
 
@@ -31,63 +30,67 @@
     </main>
   </div>
 
-  <script>
-    const startBtn = document.getElementById("startBtn");
-    const list = document.getElementById("scheduleList");
+<script>
+const startBtn = document.getElementById("startBtn");
+const list = document.getElementById("scheduleList");
+const deviceMsg = document.getElementById("deviceMsg");
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+const isAndroid = /Android/i.test(navigator.userAgent);
 
-    if (!SpeechRecognition) {
-      alert("このブラウザは音声認識に対応していません（Chrome推奨）");
-    }
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
+if (!isAndroid) {
+  startBtn.disabled = true;
+  deviceMsg.textContent = "⚠️ 音声入力はAndroid端末のみ対応しています";
+}
 
-    Notification.requestPermission();
+if (isAndroid && SpeechRecognition) {
+  const recognition = new SpeechRecognition();
+  recognition.lang = "ja-JP";
 
-    startBtn.onclick = () => {
-      recognition.start();
-      startBtn.classList.add("listening"); // 録音中に青く光る
-    };
+  startBtn.onclick = () => {
+    recognition.start();
+    startBtn.classList.add("listening");
+  };
 
-    recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      addSchedule(text);
-    };
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    const li = document.createElement("li");
+    li.textContent = text;
+    list.appendChild(li);
+    save();
+  };
 
-    recognition.onend = () => {
-      startBtn.classList.remove("listening");
-    };
+  recognition.onend = () => {
+    startBtn.classList.remove("listening");
+  };
 
-    recognition.onerror = () => {
-      startBtn.classList.remove("listening");
-    };
+  recognition.onerror = () => {
+    startBtn.classList.remove("listening");
+  };
+}
 
-    function addSchedule(text) {
-      const li = document.createElement("li");
-      li.textContent = text;
-      list.appendChild(li);
-      save();
-    }
+function save() {
+  const items = [];
+  document.querySelectorAll("li").forEach(li => items.push(li.textContent));
+  localStorage.setItem("schedules", JSON.stringify(items));
+}
 
-    function save() {
-      const items = [];
-      document.querySelectorAll("li").forEach(li =>
-        items.push(li.textContent)
-      );
-      localStorage.setItem("schedules", JSON.stringify(items));
-    }
+function load() {
+  const data = JSON.parse(localStorage.getItem("schedules") || "[]");
+  data.forEach(text => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    list.appendChild(li);
+  });
+}
 
-    function load() {
-      const data = JSON.parse(
-        localStorage.getItem("schedules") || "[]"
-      );
-      data.forEach(addSchedule);
-    }
+load();
 
-    load();
-  </script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
+</script>
 </body>
 </html>
