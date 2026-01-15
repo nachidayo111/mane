@@ -22,7 +22,6 @@
 
     <main>
       <p class="hint">ボタンを長押しして話してください</p>
-      <p id="deviceMsg" class="hint"></p>
 
       <button id="startBtn">長押しで音声入力</button>
 
@@ -33,45 +32,17 @@
 <script>
 const startBtn = document.getElementById("startBtn");
 const list = document.getElementById("scheduleList");
-const deviceMsg = document.getElementById("deviceMsg");
 
-const isAndroid = /Android/i.test(navigator.userAgent);
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-let recognition;
+let recognition = null;
 let pressTimer = null;
 
-if (!isAndroid || !SpeechRecognition) {
-  startBtn.disabled = true;
-  deviceMsg.textContent = "⚠️ 音声入力はAndroid端末のみ対応しています";
-} else {
+// 音声認識APIがある端末のみ初期化
+if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "ja-JP";
-
-  const startRecording = () => {
-    recognition.start();
-    startBtn.classList.add("listening");
-  };
-
-  const stopRecording = () => {
-    clearTimeout(pressTimer);
-    recognition.stop();
-    startBtn.classList.remove("listening");
-  };
-
-  // 長押し開始
-  startBtn.addEventListener("touchstart", () => {
-    pressTimer = setTimeout(startRecording, 300);
-  });
-  startBtn.addEventListener("mousedown", () => {
-    pressTimer = setTimeout(startRecording, 300);
-  });
-
-  // 離したら終了
-  startBtn.addEventListener("touchend", stopRecording);
-  startBtn.addEventListener("mouseup", stopRecording);
-  startBtn.addEventListener("mouseleave", stopRecording);
 
   recognition.onresult = (event) => {
     const text = event.results[0][0].transcript;
@@ -80,7 +51,36 @@ if (!isAndroid || !SpeechRecognition) {
     list.appendChild(li);
     save();
   };
+
+  recognition.onend = () => {
+    startBtn.classList.remove("listening");
+  };
 }
+
+// 長押し開始
+const startRecording = () => {
+  if (!recognition) return;
+  recognition.start();
+  startBtn.classList.add("listening");
+};
+
+// 長押し終了
+const stopRecording = () => {
+  clearTimeout(pressTimer);
+  if (recognition) recognition.stop();
+  startBtn.classList.remove("listening");
+};
+
+startBtn.addEventListener("touchstart", () => {
+  pressTimer = setTimeout(startRecording, 300);
+});
+startBtn.addEventListener("mousedown", () => {
+  pressTimer = setTimeout(startRecording, 300);
+});
+
+startBtn.addEventListener("touchend", stopRecording);
+startBtn.addEventListener("mouseup", stopRecording);
+startBtn.addEventListener("mouseleave", stopRecording);
 
 function save() {
   const items = [];

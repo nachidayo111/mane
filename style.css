@@ -51,12 +51,6 @@ button.listening {
   box-shadow: 0 0 15px rgba(0,122,255,0.8);
 }
 
-button:disabled {
-  background: #ccc;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
 ul {
   list-style: none;
   padding: 0;
