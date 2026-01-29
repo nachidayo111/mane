@@ -3,105 +3,187 @@
 <head>
   <meta charset="UTF-8" />
   <title>音声予定登録</title>
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ff9500">
 
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
-
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="予定登録">
-
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <div class="app">
-    <header>🎤 音声予定登録</header>
+<div class="app">
+  <header>📅 音声予定登録</header>
 
-    <main>
-      <p class="hint">ボタンを長押しして話してください</p>
+  <main>
+    <section class="calendar">
+      <div class="calendar-header" id="month"></div>
+      <div class="calendar-grid" id="calendar"></div>
+    </section>
 
-      <button id="startBtn">長押しで音声入力</button>
+    <p class="hint">「3月5日 14時 会議」のように話してください</p>
+    <button id="startBtn">＋ 音声で予定を追加</button>
 
-      <ul id="scheduleList"></ul>
-    </main>
-  </div>
+    <ul id="scheduleList"></ul>
+  </main>
+</div>
 
 <script>
 const startBtn = document.getElementById("startBtn");
 const list = document.getElementById("scheduleList");
+const calendarEl = document.getElementById("calendar");
 
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-let recognition = null;
-let pressTimer = null;
+let recognition;
+let selectedDate = formatDate(new Date());
+let schedules = JSON.parse(localStorage.getItem("schedules") || "[]");
 
-// 音声認識APIがある端末のみ初期化
+// ========================
+// 音声認識
+// ========================
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "ja-JP";
+  recognition.interimResults = false;
 
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-    const li = document.createElement("li");
-    li.textContent = text;
-    list.appendChild(li);
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    const parsed = parseSpeech(text);
+
+    schedules.push(parsed);
     save();
-  };
-
-  recognition.onend = () => {
-    startBtn.classList.remove("listening");
+    renderList();
+    scheduleAlarm(parsed);
   };
 }
 
-// 長押し開始
-const startRecording = () => {
-  if (!recognition) return;
-  recognition.start();
-  startBtn.classList.add("listening");
-};
+startBtn.onmousedown = () => recognition?.start();
+startBtn.ontouchstart = () => recognition?.start();
 
-// 長押し終了
-const stopRecording = () => {
-  clearTimeout(pressTimer);
-  if (recognition) recognition.stop();
-  startBtn.classList.remove("listening");
-};
+// ========================
+// 音声解析（○月○日＋時間）
+// ========================
+function parseSpeech(text) {
+  const now = new Date();
+  let month = now.getMonth() + 1;
+  let day = now.getDate();
+  let hour = null;
+  let minute = 0;
 
-startBtn.addEventListener("touchstart", () => {
-  pressTimer = setTimeout(startRecording, 300);
-});
-startBtn.addEventListener("mousedown", () => {
-  pressTimer = setTimeout(startRecording, 300);
-});
+  const md = text.match(/(\d+)月(\d+)日/);
+  if (md) {
+    month = Number(md[1]);
+    day = Number(md[2]);
+  }
 
-startBtn.addEventListener("touchend", stopRecording);
-startBtn.addEventListener("mouseup", stopRecording);
-startBtn.addEventListener("mouseleave", stopRecording);
+  const time = text.match(/(\d+)時(\d+)?分?/);
+  if (time) {
+    hour = Number(time[1]);
+    minute = Number(time[2] || 0);
+  }
 
-function save() {
-  const items = [];
-  document.querySelectorAll("li").forEach(li => items.push(li.textContent));
-  localStorage.setItem("schedules", JSON.stringify(items));
+  return {
+    text,
+    date: `${now.getFullYear()}-${pad(month)}-${pad(day)}`,
+    hour,
+    minute
+  };
 }
 
-function load() {
-  const data = JSON.parse(localStorage.getItem("schedules") || "[]");
-  data.forEach(text => {
-    const li = document.createElement("li");
-    li.textContent = text;
-    list.appendChild(li);
+// ========================
+// カレンダー
+// ========================
+function createCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  document.getElementById("month").textContent =
+    `${year}年 ${month + 1}月`;
+
+  calendarEl.innerHTML = "";
+  ["日","月","火","水","木","金","土"].forEach(d => {
+    const div = document.createElement("div");
+    div.className = "day-label";
+    div.textContent = d;
+    calendarEl.appendChild(div);
   });
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) {
+    calendarEl.appendChild(document.createElement("div"));
+  }
+
+  for (let d = 1; d <= lastDate; d++) {
+    const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+    const div = document.createElement("div");
+    div.className = "day";
+    if (dateStr === formatDate(new Date())) div.classList.add("today");
+    if (dateStr === selectedDate) div.classList.add("selected");
+
+    div.textContent = d;
+    div.onclick = () => {
+      selectedDate = dateStr;
+      renderList();
+      createCalendar();
+    };
+    calendarEl.appendChild(div);
+  }
 }
 
-load();
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
+// ========================
+// 予定表示
+// ========================
+function renderList() {
+  list.innerHTML = "";
+  schedules
+    .filter(s => s.date === selectedDate)
+    .forEach(s => {
+      const li = document.createElement("li");
+      li.textContent = s.text;
+      list.appendChild(li);
+    });
 }
+
+// ========================
+// 通知（アラーム）
+// ========================
+function scheduleAlarm(item) {
+  if (item.hour === null) return;
+
+  Notification.requestPermission();
+
+  const target = new Date(
+    item.date + ` ${pad(item.hour)}:${pad(item.minute)}`
+  );
+  const delay = target.getTime() - Date.now();
+  if (delay <= 0) return;
+
+  setTimeout(() => {
+    new Notification("予定の時間です", {
+      body: item.text
+    });
+  }, delay);
+}
+
+// ========================
+function save() {
+  localStorage.setItem("schedules", JSON.stringify(schedules));
+}
+
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+// 初期化
+createCalendar();
+renderList();
 </script>
 </body>
 </html>
